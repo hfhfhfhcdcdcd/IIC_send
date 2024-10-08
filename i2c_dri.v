@@ -8,11 +8,11 @@ module i2c_dri (
     input               rst_n           ,
     
     output reg          dri_clk         ,//在50Mhz的基础上为IIC提供工作时钟
-    output reg [17:0]   scl             ,//IIC工作时的工作时钟
+    output reg          scl             ,//IIC工作时的工作时钟
     output reg          i2c_ack         ,//IIC的应答信号
     output reg [7:0]    i2c_data_r      ,//FPGA从E2PROM读得的数据
     output reg          i2c_done        ,
-    inout  reg          sda             
+    output reg          sda             
 );
 /*-------------------------------parameter declaration---------------------------------*/    
 localparam st_idle      = 3'd0;
@@ -28,24 +28,25 @@ parameter SYS_CLK = 50_000_000;  // 系统时钟的频率
 parameter SCL_CLK = 250_000; // IIC工作的时钟频率，对应端口中的scl
 /*----------------------------------------reg define------------------------------------*/
 reg sda_out ;
-reg sda_in ;
+wire sda_in ;
 reg sda_dir ;
-reg [31:0] sda_cnt ;
+reg [7:0] sda_cnt ;
 reg cur_state  ;
 reg next_state ;
 reg [7:0]div_clk_200_cnt;
 reg [9:0]scl_800_cnt;
+reg wr_flag;
 reg st_done    ;//标志信号：存储单元高五位地址已经发送到了fpga上
 /*-------------------------------------sda的assign-----------------------------------*/
-assign sda = (sda_dir) ? sda_out : 1'bz ;
-assign sda_in = sda ;
+//assign sda = (sda_dir) ? sda_out : 1'bz ;
+//assign sda_in = sda ;
 /*-------------------------------------div_clk_200_cnt-----------------------------------*/
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         div_clk_200_cnt <= 0;
     end
     else if (div_clk_200_cnt == (200/2)-1) begin
-        div_clk_200_cnt<=0
+        div_clk_200_cnt<=0;
     end
     else 
         div_clk_200_cnt <= div_clk_200_cnt + 1;
@@ -56,7 +57,7 @@ always @(posedge clk or negedge rst_n) begin
         scl_800_cnt <= 0;
     end
     else if (scl_800_cnt == (800/2)-1) begin
-        scl_800_cnt<=0
+        scl_800_cnt<=0;
     end
     else 
         scl_800_cnt <= scl_800_cnt + 1;
@@ -83,13 +84,24 @@ end
     else
         scl <= scl;
  end
+/*----------------------------------------sda_cnt---------------------------------------------*/
+ always @(posedge dri_clk or negedge rst_n) begin
+    if (!rst_n) begin
+        sda_cnt <= 8'd0;
+    end
+    else if (sda_cnt == 148) begin
+        sda_cnt <= 8'd0;
+    end
+    else
+        sda_cnt <= sda_cnt + 1;
+ end
 /*-------------------------------------状态机第1段--------------------------------------*/
 always@(posedge dri_clk or negedge rst_n) begin
     if (!rst_n) begin
         cur_state <= st_idle;
     end
     else    
-        cur_state <= next_state
+        cur_state <= next_state;
 end
 /*--------------------------------------状态机第2段-----------------------------------------*/
 always @(*) begin
@@ -159,14 +171,22 @@ always @(*) begin
                 else
                     next_state = cur_state;
             end 
-            default: 
+            default: ;
         endcase
 end
 /*----------------------------------状态机第3段-------------------------------------*/
 always @(*) begin
     if (!rst_n) begin
-        
+        sda=1'b1;
     end
+    else if ((scl)&&(sda_cnt==1)) begin
+        sda_cnt=0;
+    end
+    else case (sda_cnt)
+        4,12,64,100,138:sda=1;
+        96,132:sda=0;
+        default: sda=sda;
+    endcase
 
 
 end

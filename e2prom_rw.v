@@ -1,4 +1,4 @@
-module  (
+module e2prom_rw (
     input                   clk             ,// iic模块输出的时钟
     input                   i2c_ack         ,// iic模块输出的应答信号
     input        [7:0]      i2c_data_r      ,// 从  iic模块 读到的数据
