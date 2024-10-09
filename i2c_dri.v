@@ -2,7 +2,7 @@ module i2c_dri (
     input               bit_ctrl        ,// bit_ctrl==0,send 4 bit 存储单元地址, bit_ctrl==1,send 16 bit 存储单元地址
     input               clk             ,// 50MHz
     input [15:0]        i2c_addr        ,// 16 bit 存储单元地址 
-    input [7:0]         i2c_data_w      ,// FPGA向E2PROM写的4bit数据
+    input [7:0]         i2c_data_w      ,// FPGA向E2PROM写的8bit数据
     input               i2c_exec        ,// 一个脉冲信号
     input               i2c_rh_wl       ,// 控制FPGA是向E2PROM写还是读，高电平读；低电平写
     input               rst_n           ,
@@ -15,33 +15,33 @@ module i2c_dri (
     output reg          sda             
 );
 /*-------------------------------parameter declaration---------------------------------*/    
-localparam st_idle      = 3'd0;
-localparam st_sladdr    = 3'd1;
-localparam st_addr16    = 3'd2;
-localparam st_addr8     = 3'd3;
-localparam st_data_wr   = 3'd4;
-localparam st_stop      = 3'd5;
-localparam st_addr_rd   = 3'd6;
-localparam st_data_rd   = 3'd7;
-
-parameter SYS_CLK = 50_000_000;  // 系统时钟的频率  
-parameter SCL_CLK = 250_000; // IIC工作的时钟频率，对应端口中的scl
+ localparam st_idle      = 3'd0;
+ localparam st_sladdr    = 3'd1;
+ localparam st_addr16    = 3'd2;
+ localparam st_addr8     = 3'd3;
+ localparam st_data_wr   = 3'd4;
+ localparam st_stop      = 3'd5;
+ localparam st_addr_rd   = 3'd6;
+ localparam st_data_rd   = 3'd7;
+ 
+ parameter SYS_CLK = 50_000_000;  // 系统时钟的频率  
+ parameter SCL_CLK = 250_000; // IIC工作的时钟频率，对应端口中的scl
 /*----------------------------------------reg define------------------------------------*/
-reg sda_out ;
-wire sda_in ;
-reg sda_dir ;
-reg [7:0] sda_cnt ;
-reg cur_state  ;
-reg next_state ;
-reg [7:0]div_clk_200_cnt;
-reg [9:0]scl_800_cnt;
-reg wr_flag;
-reg st_done    ;//标志信号：存储单元高五位地址已经发送到了fpga上
+ reg             sda_out              ; 
+ wire            sda_in               ;
+ reg             sda_dir              ; 
+ reg [7:0]       sda_cnt              ; 
+ reg             cur_state            ;    
+ reg             next_state           ;    
+ reg [7:0]       div_clk_200_cnt      ;        
+ reg [9:0]       scl_800_cnt          ;    
+ reg             wr_flag              ;
+ reg             st_done              ;//标志信号：存储单元高五位地址已经发送到了fpga上
 /*-------------------------------------sda的assign-----------------------------------*/
-//assign sda = (sda_dir) ? sda_out : 1'bz ;
-//assign sda_in = sda ;
+ assign sda = (sda_dir) ? sda_out : 1'bz ;
+ assign sda_in = sda ;
 /*-------------------------------------div_clk_200_cnt-----------------------------------*/
-always @(posedge clk or negedge rst_n) begin
+ always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         div_clk_200_cnt <= 0;
     end
@@ -50,9 +50,9 @@ always @(posedge clk or negedge rst_n) begin
     end
     else 
         div_clk_200_cnt <= div_clk_200_cnt + 1;
-end
+ end
 /*----------------------------------------scl_800_cnt---------------------------------*/
-always @(posedge clk or negedge rst_n) begin
+ always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         scl_800_cnt <= 0;
     end
@@ -61,7 +61,7 @@ always @(posedge clk or negedge rst_n) begin
     end
     else 
         scl_800_cnt <= scl_800_cnt + 1;
-end
+ end
 /*----------------------------------------div_clk---------------------------------------*/
  always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -95,16 +95,16 @@ end
     else
         sda_cnt <= sda_cnt + 1;
  end
-/*-------------------------------------状态机第1段--------------------------------------*/
-always@(posedge dri_clk or negedge rst_n) begin
+/*--------------------------------------状态机第1段--------------------------------------*/
+ always@(posedge dri_clk or negedge rst_n) begin
     if (!rst_n) begin
         cur_state <= st_idle;
     end
     else    
         cur_state <= next_state;
-end
+ end
 /*--------------------------------------状态机第2段-----------------------------------------*/
-always @(*) begin
+ always @(*) begin
     if(!rst_n)
         next_state = st_idle;
     else
@@ -173,21 +173,87 @@ always @(*) begin
             end 
             default: ;
         endcase
-end
-/*----------------------------------状态机第3段-------------------------------------*/
-always @(*) begin
+ end
+/*--------------------------------------状态机第3段-------------------------------------*/
+ always @(*) begin
     if (!rst_n) begin
-        sda=1'b1;
+        i2c_ack = 1'b1;
+        i2c_data_r = 8'b0;
+        i2c_done = 1'b0;
+        sda = 1'b1;
     end
-    else if ((scl)&&(sda_cnt==1)) begin
-        sda_cnt=0;
-    end
-    else case (sda_cnt)
-        4,12,64,100,138:sda=1;
-        96,132:sda=0;
-        default: sda=sda;
-    endcase
-
-
-end
+    else begin
+        i2c_ack = 1'b1;
+        i2c_data_r = ;
+        i2c_done = 1'b0;
+        sda = 1'b1;
+        case (cur_state)
+            st_idle   :begin
+                i2c_exec=1'b1;
+            end 
+            st_sladdr :begin
+                case (sda_cnt)
+                    1,8,16:sda = 1'b0;//sda在 1 的时候拉低，说明要开始发送了
+                    36,37,38,39:i2c_ack = 1'b0;//第一次应答信号拉低
+                    default:; 
+                endcase          
+            end 
+            st_addr16 :begin
+                case (sda_cnt)
+                    40: begin sda = i2c_addr[15]; end
+                    44: begin sda = i2c_addr[14]; end
+                    48: begin sda = i2c_addr[13]; end
+                    52: begin sda = i2c_addr[12]; end
+                    56: begin sda = i2c_addr[11]; end
+                    60: begin sda = i2c_addr[10]; end
+                    64: begin sda = i2c_addr[9]; end
+                    68: begin sda = i2c_addr[8]; end
+                    72,73,74,75:i2c_ack = 1'b0;//第二次应答信号拉低
+                    default: ;
+                endcase
+            end 
+            st_addr8  :begin
+                case (sda_cnt)
+                    72: begin sda = i2c_addr[7]; end
+                    76: begin sda = i2c_addr[6]; end
+                    80: begin sda = i2c_addr[5]; end
+                    84: begin sda = i2c_addr[4]; end
+                    88: begin sda = i2c_addr[3]; end
+                    92: begin sda = i2c_addr[2]; end
+                    96: begin sda = i2c_addr[1]; end
+                    100:begin sda = i2c_addr[0]; end
+                    108,109,110,111:i2c_ack = 1'b0;//第三次应答信号拉低
+                    default: ;
+                endcase
+            end 
+            st_data_wr:begin
+                case (sda_cnt)
+                    : 
+                    :
+                    default: 
+                endcase
+                sda = i2c_data_w;
+            end 
+            st_stop   :begin
+                i2c_ack = ;
+                i2c_data_r = ;
+                i2c_done = ;
+                sda = ;
+            end 
+            st_addr_rd:begin
+                i2c_ack = ;
+                i2c_data_r = ;
+                i2c_done = ;
+                sda = ;
+            end 
+            st_data_rd:begin
+                i2c_ack = ;
+                i2c_data_r = ;
+                i2c_done = ;
+                sda = ;
+            end  
+            default: 
+        endcase
+    end    
+ end
 endmodule
