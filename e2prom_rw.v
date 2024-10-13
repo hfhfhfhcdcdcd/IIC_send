@@ -133,7 +133,7 @@ module e2prom_rw (
     end
     else if ((i2c_rh_wl)&&(i2c_exec)) begin
         if(compare_cnt <= 256) begin
-            if () begin
+            if (i2c_data_r == i2c_data_w) begin
                 rw_done <= 1'd1;
             end
             else

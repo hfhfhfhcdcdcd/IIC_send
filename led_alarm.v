@@ -1,10 +1,10 @@
 module alarm (
-    input       clk                 ,
-    input       rst_n               ,
-    input       rw_done             ,
-    input       rw_result           ,     
+    input           clk                 ,
+    input           rst_n               ,
+    input           rw_done             ,
+    input           rw_result           ,     
     
-    output      led
+    output  reg     led
 );
 /*-----------------led----------------*/ 
  always @(posedge clk or negedge rst_n) begin

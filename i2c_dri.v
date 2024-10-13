@@ -33,11 +33,11 @@ module i2c_dri (
  reg              next_state           ;    
  reg  [7:0]       div_clk_200_cnt      ;        
  reg  [9:0]       scl_800_cnt          ;    
- wire             wr_flag              ;
- wire [15:0]      addr_t               ;//输入端口i2c_addr —— 16bit的寄存器        
- wire [7:0]       data_wr_t            ;//i2c_data_w —— 8bit数据的寄存器 
- wire [7:0]       data_r               ;//i2c_data_r —— 8bit数据的寄存器
- wire             st_done              ;//标志信号：存储单元高五位地址已经发送到了fpga上
+ reg              wr_flag              ;
+ reg  [15:0]      addr_t               ;//输入端口i2c_addr —— 16bit的寄存器        
+ reg  [7:0]       data_wr_t            ;//i2c_data_w —— 8bit数据的寄存器 
+ reg  [7:0]       data_r               ;//i2c_data_r —— 8bit数据的寄存器
+ reg              st_done              ;//标志信号：存储单元高五位地址已经发送到了fpga上
 /*-------------------------------------sda的assign-----------------------------------*/
  reg             sda_out              ; 
  wire            sda_in               ;
