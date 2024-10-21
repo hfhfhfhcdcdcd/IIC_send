@@ -6,16 +6,7 @@ module e2prom_top (
     inout         sda     
 );
 /*==================================i2c_dri================================*/
-   //  reg                   bit_ctrl        ;// bit_ctrl==0,send 4 bit 存储单元地址, bit_ctrl==1,send 16 bit 存储单元地址
-   //  reg  [15:0]           i2c_addr        ;// 16 bit 存储单元地址 
-   //  reg  [7:0]            i2c_data_w      ;// FPGA向E2PROM写的8bit数据
-   //  reg                   i2c_exec        ;// 一个脉冲信号
-   //  reg                   i2c_rh_wl       ;// 控制FPGA是向E2PROM写还是读，高电平读；低电平写
 
-   /* wire                  dri_clk         ;//在50Mhz的基础上为IIC提供工作时钟
-    wire                  i2c_ack         ;//IIC的应答信号
-    wire  [7:0]           i2c_data_r      ;//FPGA从E2PROM读得的数据
-    wire                  i2c_done        ;*/
  
  i2c_dri i1(
     . bit_ctrl      (bit_ctrl  )      ,// bit_ctrl==0,send 4 bit 存储单元地址, bit_ctrl==1,send 16 bit 存储单元地址
